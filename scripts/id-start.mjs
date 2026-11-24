@@ -4,9 +4,11 @@ import { ConcordiumGRPCNodeClient, credentials } from '@concordium/web-sdk/nodej
 import { generateMnemonic } from 'bip39';
 import fs from 'fs';
 const f = '.secrets/wallet.json';
-fs.mkdirSync('.secrets', { recursive: true });
+fs.mkdirSync('.secrets', { recursive: true, mode: 0o700 });
 const st = fs.existsSync(f) ? JSON.parse(fs.readFileSync(f)) : { seedPhrase: generateMnemonic(256), ip: 0, identityIndex: 0 };
-fs.writeFileSync(f, JSON.stringify(st, null, 2));
+fs.writeFileSync(f, JSON.stringify(st, null, 2), { mode: 0o600 });
+fs.chmodSync('.secrets', 0o700);
+fs.chmodSync(f, 0o600);
 const client = new ConcordiumGRPCNodeClient('grpc.testnet.concordium.com', 20000, credentials.createSsl());
 const global = await client.getCryptographicParameters();
 const idps = await (await fetch('https://wallet-proxy.testnet.concordium.com/v1/ip_info')).json();

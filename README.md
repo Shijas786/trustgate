@@ -74,7 +74,7 @@ npm install
 node scripts/id-start.mjs        # creates a testnet wallet; open the printed URL, then save the code_uri from the redirect to .secrets/code_uri.txt
 node scripts/accounts.mjs        # deploys the accounts and requests test CCD
 node scripts/env.mjs             # writes .env
-node scripts/register-agents.mjs # registers the demo agents and writes cards/
+CARD_BASE_URL=https://<your-host>/cards node scripts/register-agents.mjs # registers your own demo agents; host cards/ at that URL (the server serves /cards)
 npm start                        # http://localhost:8787
 npm test
 ```

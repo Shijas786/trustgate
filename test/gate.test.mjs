@@ -73,7 +73,7 @@ test('a submitted but unconfirmed settlement is not reported as uncharged', asyn
     payTo: '4XC9TBAXSJN174Jj74iBVotS68oqRGPVBM3YzsghzHAD5rasBc', priceMicroCcd: 1n,
     deps: {
       buildRequirements: async () => ({ extra: {} }),
-      facilitator: { verify: async () => ({ isValid: true, payer: 'OWNER' }), settle: async () => ({ success: false, errorReason: 'timeout', transaction: 'abc' }) },
+      facilitator: { verify: async () => ({ isValid: true, payer: 'OWNER' }), settle: async () => ({ success: false, errorReason: 'finalization_timeout', transaction: 'abc' }) },
       registry: async () => ({ token_id: 1, owner_account: 'OWNER', agent_wallet: 'OWNER', status: 'Active', agent_uri: 'https://x/card.json', metadata_hash_hex: createHash('sha256').update(body).digest('hex') }),
       fetchCard: async () => ({ status: 200, body }),
     },

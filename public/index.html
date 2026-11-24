@@ -93,7 +93,7 @@ document.querySelectorAll('button.sc').forEach((b) => b.onclick = async () => {
   try {
     const r = await fetch('api/demo/' + b.dataset.id, { method: 'POST', headers: { 'content-type': 'application/json' }, body: '{}' });
     const j = await r.json();
-    $('status').textContent = j.error ? j.error : j.status === 200 ? 'Admitted and paid. Report delivered.' : 'Refused: ' + (REASONS[j.body?.reason] || j.body?.reason) + '. Nothing was charged.';
+    $('status').textContent = j.error ? j.error : j.status === 200 ? 'Admitted and paid. Report delivered.' : j.body?.charged === 'unconfirmed' ? 'Payment was submitted but not confirmed in time. Check the transaction link in the feed.' : 'Refused: ' + (REASONS[j.body?.reason] || j.body?.reason) + '. Nothing was charged.';
   } catch (e) { $('status').textContent = 'Request failed: ' + e.message; }
   document.querySelectorAll('button.sc').forEach((x) => (x.disabled = false));
   refresh();
@@ -110,7 +110,7 @@ async function refresh() {
     const ok = d.outcome === 'allowed';
     return `<div class="dec"><div class="top"><div><span class="tag ${ok ? 'ok' : 'bad'}">${ok ? 'ADMITTED' : 'REFUSED'}</span><span class="who">${esc(d.label || short(d.payer) || 'unknown agent')}</span>${ok ? '' : ' — ' + esc(REASONS[d.reason] || d.reason)}</div><time>${new Date(d.at).toLocaleTimeString()} · ${d.ms} ms</time></div>` +
       `<ul class="checks">${(d.checks || []).map((c) => `<li class="${c.pass ? 'p' : 'f'}">${esc(c.label)} <code>${esc(c.detail)}</code></li>`).join('')}</ul>` +
-      (ok ? `<div class="rcpt">Paid ${ccd(d.receipt.amountMicroCcd)} CCD, fee sponsored by ${short(d.receipt.sponsor)} · <a target="_blank" href="${d.receipt.explorer}">view transaction on CCDExplorer</a></div>` : `<div class="rcpt">Not charged. No transaction was submitted.</div>`) + `</div>`;
+      (ok ? `<div class="rcpt">Paid ${ccd(d.receipt.amountMicroCcd)} CCD, fee sponsored by ${short(d.receipt.sponsor)} · <a target="_blank" href="${d.receipt.explorer}">view transaction on CCDExplorer</a></div>` : d.charged === 'unconfirmed' ? `<div class="rcpt">Payment submitted but not confirmed · <a target="_blank" href="${d.explorer}">view transaction on CCDExplorer</a></div>` : `<div class="rcpt">Not charged.${d.explorer ? ` <a target="_blank" href="${d.explorer}">Rejected transaction</a>` : ' No transaction was submitted.'}</div>`) + `</div>`;
   }).join('') : '<p style="color:var(--mute)">No requests yet. Send an agent from the left.</p>';
 }
 refresh(); setInterval(refresh, 5000);

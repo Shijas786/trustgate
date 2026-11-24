@@ -17,7 +17,11 @@ const save = () => fs.writeFileSync(file, JSON.stringify(state, null, 2) + '\n')
 
 for (const a of agents) {
   if (state[a.id]?.done && state[a.id].owner === a.owner) continue;
-  if (state[a.id] && state[a.id].owner !== a.owner) delete state[a.id]; // registered by a different wallet
+  if (state[a.id] && state[a.id].owner !== a.owner) {
+    // Registered by a different wallet: the new cards must be hosted where this deployment can publish them.
+    if (!process.env.CARD_BASE_URL) throw new Error('Set CARD_BASE_URL to a public https URL that serves your cards/ directory (for example https://<your-host>/cards), then re-run.');
+    delete state[a.id];
+  }
   const agent_uri = `${BASE}/${a.id}.json`;
   const card = (token_id) => registry('build_agent_card', {
     name: a.name, description: a.description, agent_uri, owner_account: a.owner, agent_wallet: a.owner, ...(token_id === undefined ? {} : { token_id }),

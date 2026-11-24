@@ -67,9 +67,9 @@ export function trustgate({ payTo, priceMicroCcd, description, policy = {}, onDe
     }
     if (!settled.success) {
       // A submitted transfer may still finalize, so never report it as uncharged.
-      const tx = settled.transaction || null;
+      const tx = /^finalization_(timeout|failed)/.test(settled.errorReason ?? '') ? settled.transaction || null : null;
       return deny(tx ? 502 : 402, tx ? 'settlement_unconfirmed' : 'settlement_failed',
-        { detail: settled.errorReason, ...(tx ? { charged: 'unconfirmed', transaction: tx, explorer: explorerTx(tx) } : {}) });
+        { detail: settled.errorReason, ...(!tx && settled.transaction ? { transaction: settled.transaction, explorer: explorerTx(settled.transaction) } : {}), ...(tx ? { charged: 'unconfirmed', transaction: tx, explorer: explorerTx(tx) } : {}) });
     }
     spend.set(key, BigInt(spend.get(key) ?? 0n) + BigInt(priceMicroCcd));
 
