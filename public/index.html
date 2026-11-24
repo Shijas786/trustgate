@@ -15,7 +15,7 @@ h1{margin:0;font-size:30px;letter-spacing:-.5px}h1 span{color:var(--acc)}
 #tryOut{margin-top:10px}
 .sub{color:var(--mute);max-width:760px;margin:6px 0 0}
 main{max-width:1180px;margin:0 auto;padding:16px 32px 60px;display:grid;grid-template-columns:400px 1fr;gap:20px}
-@media(max-width:900px){main{display:flex;flex-direction:column}.pSend{order:1}.pFeed{order:2}.pTry{order:3}.pHow{order:4}.pChain{order:5}section.col{display:contents}}
+@media(max-width:900px){main{display:flex;flex-direction:column}.pSend{order:1}.pFeed{order:2}.pTry{order:3}.pHow{order:4}#status{height:auto;min-height:44px}.pChain{order:5}section.col{display:contents}}
 .panel{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:18px}
 h2{font-size:13px;text-transform:uppercase;letter-spacing:1px;color:var(--mute);margin:0 0 12px}
 .stats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:20px}
@@ -48,7 +48,7 @@ code{font:12px ui-monospace,Menlo,monospace;color:#b8c7d9;word-break:break-all}
   <section class="col">
     <div class="panel pSend" style="margin-bottom:20px">
       <h2>Send an agent to the paid API</h2>
-      <div id="status">Each button makes a real HTTP call. An admitted agent makes a real Concordium testnet payment (about 10 s to finalize).</div>
+      <div id="status">Each button is a real agent call. An admitted agent pays on Concordium testnet (about 10 s).</div>
       <div id="scenarios"></div>
     </div>
     <div class="panel pTry" style="margin-bottom:20px">
@@ -134,7 +134,7 @@ $('try').onsubmit = async (e) => {
     const j = await (await fetch('api/check/' + encodeURIComponent(badge))).json();
     const checks = (j.checks || []).filter((c) => c.id !== 'payer_is_agent_wallet');
     const ok = checks.length > 1 && checks.every((c) => c.pass);
-    $('tryOut').innerHTML = `<span class="tag ${ok ? 'ok' : 'bad'}">${ok ? 'TRUSTED' : 'NOT TRUSTED'}</span>` + (ok ? 'This agent could buy, if it pays from its bound wallet.' : 'This agent would be refused.') + checkList(checks);
+    $('tryOut').innerHTML = `<span class="tag ${ok ? 'ok' : 'bad'}">${ok ? 'TRUSTED' : 'NOT TRUSTED'}</span>` + (ok ? 'Registry checks pass. A purchase also needs payment from its bound wallet, within the daily cap.' : 'This agent would be refused.') + checkList(checks);
   } catch (err) { $('tryOut').textContent = 'Check failed: ' + err.message; }
 };
 refresh(); setInterval(refresh, 3000);
