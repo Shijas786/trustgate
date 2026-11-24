@@ -33,9 +33,15 @@ function isPrivate(ip) {
 async function defaultFetchCard(url) {
   await assertPublicUrl(url);
   const res = await fetch(url, { signal: AbortSignal.timeout(8000), redirect: 'error' });
-  const body = Buffer.from(await res.arrayBuffer());
-  if (body.length > MAX_CARD_BYTES) throw new Error('card too large');
-  return { status: res.status, body };
+  if (Number(res.headers.get('content-length') ?? 0) > MAX_CARD_BYTES) throw new Error('card too large');
+  const chunks = [];
+  let size = 0;
+  for await (const chunk of res.body ?? []) {
+    size += chunk.length;
+    if (size > MAX_CARD_BYTES) throw new Error('card too large');
+    chunks.push(chunk);
+  }
+  return { status: res.status, body: Buffer.concat(chunks) };
 }
 
 /**
