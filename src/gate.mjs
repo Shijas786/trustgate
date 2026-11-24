@@ -64,7 +64,7 @@ export async function evaluateAgent({ badge, payer, policy = {}, registry = defa
     agent = await registry('agent_by_token_address', { token_address: badge });
   } catch (err) {
     agent = null;
-    add('registered', 'Badge resolves in the CIS-8004 Agent Registry', false, String(err.message).slice(0, 160));
+    add('registered', 'Badge resolves in the CIS-8004 Agent Registry', false, /Base58Check/.test(err.message) ? 'not a valid badge' : String(err.message).slice(0, 160));
     return done();
   }
   if (!add('registered', 'Badge resolves in the CIS-8004 Agent Registry', Boolean(agent?.owner_account), agent?.owner_account ? `token #${agent.token_id}, owner ${agent.owner_account}` : 'unknown token address')) return done();

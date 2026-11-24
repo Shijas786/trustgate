@@ -10,9 +10,12 @@
 a{color:var(--acc);text-decoration:none}a:hover{text-decoration:underline}
 header{padding:28px 32px 8px;max-width:1180px;margin:0 auto}
 h1{margin:0;font-size:30px;letter-spacing:-.5px}h1 span{color:var(--acc)}
+.pitch{font-size:26px;font-weight:700;letter-spacing:-.4px;margin:6px 0 0}
+.try{display:flex;gap:8px}.try input{flex:1;min-width:0;background:#0e141c;color:var(--text);border:1px solid var(--line);border-radius:10px;padding:10px 12px;font:13px ui-monospace,Menlo,monospace}.try button{background:var(--acc);color:#04121f;border:0;border-radius:10px;padding:0 16px;font:inherit;font-weight:700;cursor:pointer}
+#tryOut{margin-top:10px}
 .sub{color:var(--mute);max-width:760px;margin:6px 0 0}
 main{max-width:1180px;margin:0 auto;padding:16px 32px 60px;display:grid;grid-template-columns:400px 1fr;gap:20px}
-@media(max-width:900px){main{grid-template-columns:1fr}}
+@media(max-width:900px){main{display:flex;flex-direction:column}.pSend{order:1}.pFeed{order:2}.pTry{order:3}.pHow{order:4}#status{height:auto;min-height:44px}.pChain{order:5}section.col{display:contents}}
 .panel{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:18px}
 h2{font-size:13px;text-transform:uppercase;letter-spacing:1px;color:var(--mute);margin:0 0 12px}
 .stats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:20px}
@@ -31,23 +34,29 @@ button.sc small{display:block;color:var(--mute)}
 .rcpt{margin-top:8px;font-size:13px}
 code{font:12px ui-monospace,Menlo,monospace;color:#b8c7d9;word-break:break-all}
 .kv{font-size:13px;margin:0 0 6px}.kv span{color:var(--mute)}
-#status{min-height:22px;color:var(--mute);font-size:13px;margin:4px 0 10px}
+#status{height:44px;overflow:hidden;color:var(--mute);font-size:13px;margin:4px 0 10px}
 .flow{color:var(--mute);font-size:13px;margin:0;padding-left:18px}
 </style>
 </head>
 <body>
 <header>
   <h1>Trust<span>Gate</span></h1>
+  <p class="pitch">KYC for AI agents, at the paywall.</p>
   <p class="sub">Know-Your-Agent for paid APIs. Before an AI agent's x402 payment is settled, TrustGate checks its Concordium Badge in the on-chain Agent Registry. Trusted agents pay with a sponsored transaction and get the data. Everyone else is turned away, and never charged.</p>
 </header>
 <main>
-  <section>
-    <div class="panel" style="margin-bottom:20px">
+  <section class="col">
+    <div class="panel pSend" style="margin-bottom:20px">
       <h2>Send an agent to the paid API</h2>
-      <div id="status">Each button makes a real HTTP call. An admitted agent makes a real Concordium testnet payment (about 10 s to finalize).</div>
+      <div id="status">Each button is a real agent call. An admitted agent pays on Concordium testnet (about 10 s).</div>
       <div id="scenarios"></div>
     </div>
-    <div class="panel" style="margin-bottom:20px">
+    <div class="panel pTry" style="margin-bottom:20px">
+      <h2>Check any Concordium Badge (free)</h2>
+      <form class="try" id="try"><input id="tryBadge" aria-label="Agent badge" placeholder="Badge, e.g. JyP9Xko9uWr5vVDr43NgX" autocomplete="off"><button>Check</button></form>
+      <div id="tryOut"></div>
+    </div>
+    <div class="panel pHow" style="margin-bottom:20px">
       <h2>How a request is judged</h2>
       <ol class="flow">
         <li>API answers <b>402</b> with an x402 price and asks for a badge.</li>
@@ -57,16 +66,16 @@ code{font:12px ui-monospace,Menlo,monospace;color:#b8c7d9;word-break:break-all}
         <li>Only then is the payment sponsored, settled and the data returned.</li>
       </ol>
     </div>
-    <div class="panel">
+    <div class="panel pChain">
       <h2>On-chain</h2>
       <div id="chain"></div>
     </div>
   </section>
-  <section class="panel">
+  <section class="panel pFeed">
     <h2>Live decisions</h2>
     <div class="stats">
-      <div class="stat"><b id="sAllowed">0</b><small>agents admitted</small></div>
-      <div class="stat"><b id="sDenied">0</b><small>agents refused</small></div>
+      <div class="stat"><b id="sAllowed">0</b><small>requests admitted</small></div>
+      <div class="stat"><b id="sDenied">0</b><small>requests refused</small></div>
       <div class="stat"><b id="sEarned">0</b><small>CCD earned</small></div>
     </div>
     <div id="decisions"></div>
@@ -89,12 +98,14 @@ const ccd = (micro) => (Number(micro) / 1e6).toLocaleString(undefined, { maximum
 $('scenarios').innerHTML = SC.map(([id, t, d]) => `<button class="sc" data-id="${id}">${t}<small>${d}</small></button>`).join('');
 document.querySelectorAll('button.sc').forEach((b) => b.onclick = async () => {
   document.querySelectorAll('button.sc').forEach((x) => (x.disabled = true));
-  $('status').textContent = 'Agent is calling the API…';
+  const t0 = Date.now();
+  const tick = setInterval(() => { $('status').textContent = `Agent is calling the API… ${((Date.now() - t0) / 1000).toFixed(1)} s`; }, 100);
   try {
     const r = await fetch('api/demo/' + b.dataset.id, { method: 'POST', headers: { 'content-type': 'application/json' }, body: '{}' });
     const j = await r.json();
-    $('status').textContent = j.error ? j.error : j.status === 200 ? 'Admitted and paid. Report delivered.' : j.body?.charged === 'unconfirmed' ? 'Payment was submitted but not confirmed in time. Check the transaction link in the feed.' : 'Refused: ' + (REASONS[j.body?.reason] || j.body?.reason) + '. Nothing was charged.';
-  } catch (e) { $('status').textContent = 'Request failed: ' + e.message; }
+    clearInterval(tick);
+    $('status').textContent = j.error ? j.error : j.status === 200 ? `Admitted, paid and finalized on Concordium in ${((Date.now() - t0) / 1000).toFixed(1)} s. Report delivered.` : j.body?.charged === 'unconfirmed' ? 'Payment was submitted but not confirmed in time. Check the transaction link in the feed.' : 'Refused: ' + (REASONS[j.body?.reason] || j.body?.reason) + '. Nothing was charged.';
+  } catch (e) { clearInterval(tick); $('status').textContent = 'Request failed: ' + e.message; }
   document.querySelectorAll('button.sc').forEach((x) => (x.disabled = false));
   refresh();
 });
@@ -108,12 +119,25 @@ async function refresh() {
     Object.values(s.agents).map((a) => `<p class="kv"><span>${esc(a.name)}</span> badge <code>${a.badge}</code> · ` + Object.entries(a.txs).map(([k, u]) => `<a target="_blank" href="${u}">${k}</a>`).join(' · ') + `</p>`).join('');
   $('decisions').innerHTML = s.decisions.length ? s.decisions.map((d) => {
     const ok = d.outcome === 'allowed';
-    return `<div class="dec"><div class="top"><div><span class="tag ${ok ? 'ok' : 'bad'}">${ok ? 'ADMITTED' : 'REFUSED'}</span><span class="who">${esc(d.label || short(d.payer) || 'unknown agent')}</span>${ok ? '' : ' — ' + esc(REASONS[d.reason] || d.reason)}</div><time>${new Date(d.at).toLocaleTimeString()} · ${d.ms} ms</time></div>` +
+    return `<div class="dec"><div class="top"><div><span class="tag ${ok ? 'ok' : 'bad'}">${ok ? 'ADMITTED' : 'REFUSED'}</span><span class="who">${esc(d.label || short(d.payer) || 'unknown agent')}</span>${ok ? '' : ' — ' + esc(REASONS[d.reason] || d.reason)}</div><time>${new Date(d.at).toLocaleTimeString()} · ${(d.ms / 1000).toFixed(1)} s</time></div>` +
       `<ul class="checks">${(d.checks || []).map((c) => `<li class="${c.pass ? 'p' : 'f'}">${esc(c.label)} <code>${esc(c.detail)}</code></li>`).join('')}</ul>` +
       (ok ? `<div class="rcpt">Paid ${ccd(d.receipt.amountMicroCcd)} CCD, fee sponsored by ${short(d.receipt.sponsor)} · <a target="_blank" href="${d.receipt.explorer}">view transaction on CCDExplorer</a></div>` : d.charged === 'unconfirmed' ? `<div class="rcpt">Payment submitted but not confirmed · <a target="_blank" href="${d.explorer}">view transaction on CCDExplorer</a></div>` : `<div class="rcpt">Not charged.${d.explorer ? ` <a target="_blank" href="${d.explorer}">Rejected transaction</a>` : ' No transaction was submitted.'}</div>`) + `</div>`;
   }).join('') : '<p style="color:var(--mute)">No requests yet. Send an agent from the left.</p>';
 }
-refresh(); setInterval(refresh, 5000);
+const checkList = (checks) => `<ul class="checks">${(checks || []).map((c) => `<li class="${c.pass ? 'p' : 'f'}">${esc(c.label)} <code>${esc(c.detail)}</code></li>`).join('')}</ul>`;
+$('try').onsubmit = async (e) => {
+  e.preventDefault();
+  const badge = $('tryBadge').value.trim();
+  if (!badge) return;
+  $('tryOut').innerHTML = '<span style="color:var(--mute)">Reading the Agent Registry…</span>';
+  try {
+    const j = await (await fetch('api/check/' + encodeURIComponent(badge))).json();
+    const checks = (j.checks || []).filter((c) => c.id !== 'payer_is_agent_wallet');
+    const ok = checks.length > 1 && checks.every((c) => c.pass);
+    $('tryOut').innerHTML = `<span class="tag ${ok ? 'ok' : 'bad'}">${ok ? 'TRUSTED' : 'NOT TRUSTED'}</span>` + (ok ? 'Registry checks pass. A purchase also needs payment from its bound wallet, within the daily cap.' : 'This agent would be refused.') + checkList(checks);
+  } catch (err) { $('tryOut').textContent = 'Check failed: ' + err.message; }
+};
+refresh(); setInterval(refresh, 3000);
 </script>
 </body>
 </html>
