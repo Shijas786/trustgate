@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>TrustGate — Know Your Agent for x402 on Concordium</title>
+<style>
+:root{--bg:#0b0f14;--panel:#121923;--line:#223042;--text:#e6edf5;--mute:#8a9bb0;--ok:#35d08a;--bad:#ff6b6b;--acc:#5ab0ff}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:15px/1.5 system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
+a{color:var(--acc);text-decoration:none}a:hover{text-decoration:underline}
+header{padding:28px 32px 8px;max-width:1180px;margin:0 auto}
+h1{margin:0;font-size:30px;letter-spacing:-.5px}h1 span{color:var(--acc)}
+.sub{color:var(--mute);max-width:760px;margin:6px 0 0}
+main{max-width:1180px;margin:0 auto;padding:16px 32px 60px;display:grid;grid-template-columns:400px 1fr;gap:20px}
+@media(max-width:900px){main{grid-template-columns:1fr}}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:18px}
+h2{font-size:13px;text-transform:uppercase;letter-spacing:1px;color:var(--mute);margin:0 0 12px}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:20px}
+.stat{background:#0e141c;border:1px solid var(--line);border-radius:10px;padding:10px 12px}
+.stat b{display:block;font-size:22px}.stat small{color:var(--mute)}
+button.sc{display:block;width:100%;text-align:left;background:#0e141c;color:var(--text);border:1px solid var(--line);border-radius:10px;padding:11px 13px;margin-bottom:9px;cursor:pointer;font:inherit}
+button.sc:hover{border-color:var(--acc)}button.sc:disabled{opacity:.5;cursor:wait}
+button.sc small{display:block;color:var(--mute)}
+.tag{display:inline-block;font-size:11px;font-weight:700;padding:2px 8px;border-radius:99px;margin-right:6px}
+.tag.ok{background:rgba(53,208,138,.15);color:var(--ok)}.tag.bad{background:rgba(255,107,107,.15);color:var(--bad)}
+.dec{border:1px solid var(--line);border-radius:10px;padding:12px 14px;margin-bottom:10px;background:#0e141c}
+.dec .top{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.dec .who{font-weight:600}.dec time{color:var(--mute);font-size:12px}
+.checks{list-style:none;margin:8px 0 0;padding:0;font-size:13px}
+.checks li{padding:2px 0;color:var(--mute)}.checks li.p::before{content:"✓ ";color:var(--ok)}.checks li.f::before{content:"✗ ";color:var(--bad)}.checks li.f{color:var(--text)}
+.rcpt{margin-top:8px;font-size:13px}
+code{font:12px ui-monospace,Menlo,monospace;color:#b8c7d9;word-break:break-all}
+.kv{font-size:13px;margin:0 0 6px}.kv span{color:var(--mute)}
+#status{min-height:22px;color:var(--mute);font-size:13px;margin:4px 0 10px}
+.flow{color:var(--mute);font-size:13px;margin:0;padding-left:18px}
+</style>
+</head>
+<body>
+<header>
+  <h1>Trust<span>Gate</span></h1>
+  <p class="sub">Know-Your-Agent for paid APIs. Before an AI agent's x402 payment is settled, TrustGate checks its Concordium Badge in the on-chain Agent Registry. Trusted agents pay with a sponsored transaction and get the data. Everyone else is turned away, and never charged.</p>
+</header>
+<main>
+  <section>
+    <div class="panel" style="margin-bottom:20px">
+      <h2>Send an agent to the paid API</h2>
+      <div id="status">Each button makes a real HTTP call. An admitted agent makes a real Concordium testnet payment (about 10 s to finalize).</div>
+      <div id="scenarios"></div>
+    </div>
+    <div class="panel" style="margin-bottom:20px">
+      <h2>How a request is judged</h2>
+      <ol class="flow">
+        <li>API answers <b>402</b> with an x402 price and asks for a badge.</li>
+        <li>Agent signs a sponsored CCD transfer and sends it with its badge.</li>
+        <li>Facilitator verifies the signature against on-chain account credentials.</li>
+        <li>TrustGate reads the CIS-8004 registry: registered, active, card hash, owner, and that the <b>payer is the badge's agent wallet</b>.</li>
+        <li>Only then is the payment sponsored, settled and the data returned.</li>
+      </ol>
+    </div>
+    <div class="panel">
+      <h2>On-chain</h2>
+      <div id="chain"></div>
+    </div>
+  </section>
+  <section class="panel">
+    <h2>Live decisions</h2>
+    <div class="stats">
+      <div class="stat"><b id="sAllowed">0</b><small>agents admitted</small></div>
+      <div class="stat"><b id="sDenied">0</b><small>agents refused</small></div>
+      <div class="stat"><b id="sEarned">0</b><small>CCD earned</small></div>
+    </div>
+    <div id="decisions"></div>
+  </section>
+</main>
+<script>
+const SC = [
+  ['trusted', 'Atlas, a registered agent', 'Active badge, pays from its bound wallet'],
+  ['unregistered', 'Anonymous bot', 'Has funds, but no badge'],
+  ['stolen', 'Impostor with a stolen badge', "Presents Atlas's badge, pays from another wallet"],
+  ['revoked', 'Ghost, a revoked agent', 'Owner revoked the badge on-chain'],
+  ['tampered', 'Mirage, a tampered card', 'Agent Card edited after it was anchored'],
+];
+const REASONS = { badge_presented: 'No badge', registered: 'Not in the registry', active: 'Badge revoked', card_integrity: 'Agent Card does not match chain', badge_in_card: 'Card does not carry this badge', payer_is_agent_wallet: 'Payer is not the agent wallet', within_daily_cap: 'Daily cap reached', invalid_payment: 'Invalid payment', settlement_failed: 'Settlement failed', settlement_in_progress: 'Busy' };
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const short = (s) => (s && s.length > 20 ? s.slice(0, 8) + '…' + s.slice(-6) : s);
+const ccd = (micro) => (Number(micro) / 1e6).toLocaleString(undefined, { maximumFractionDigits: 2 });
+
+$('scenarios').innerHTML = SC.map(([id, t, d]) => `<button class="sc" data-id="${id}">${t}<small>${d}</small></button>`).join('');
+document.querySelectorAll('button.sc').forEach((b) => b.onclick = async () => {
+  document.querySelectorAll('button.sc').forEach((x) => (x.disabled = true));
+  $('status').textContent = 'Agent is calling the API…';
+  try {
+    const r = await fetch('api/demo/' + b.dataset.id, { method: 'POST', headers: { 'content-type': 'application/json' }, body: '{}' });
+    const j = await r.json();
+    $('status').textContent = j.error ? j.error : j.status === 200 ? 'Admitted and paid. Report delivered.' : 'Refused: ' + (REASONS[j.body?.reason] || j.body?.reason) + '. Nothing was charged.';
+  } catch (e) { $('status').textContent = 'Request failed: ' + e.message; }
+  document.querySelectorAll('button.sc').forEach((x) => (x.disabled = false));
+  refresh();
+});
+
+async function refresh() {
+  const s = await (await fetch('api/state')).json();
+  $('sAllowed').textContent = s.stats.allowed; $('sDenied').textContent = s.stats.denied; $('sEarned').textContent = ccd(s.stats.earnedMicroCcd);
+  $('chain').innerHTML =
+    `<p class="kv"><span>Network</span> ${esc(s.network)} · <span>price</span> ${ccd(s.priceMicroCcd)} CCD · <span>cap</span> ${ccd(s.dailyCapMicroCcd)} CCD/agent/day</p>` +
+    Object.entries(s.accounts).map(([n, a]) => `<p class="kv"><span>${n}</span> <a target="_blank" href="${a.explorer}">${short(a.address)}</a></p>`).join('') +
+    Object.values(s.agents).map((a) => `<p class="kv"><span>${esc(a.name)}</span> badge <code>${a.badge}</code> · ` + Object.entries(a.txs).map(([k, u]) => `<a target="_blank" href="${u}">${k}</a>`).join(' · ') + `</p>`).join('');
+  $('decisions').innerHTML = s.decisions.length ? s.decisions.map((d) => {
+    const ok = d.outcome === 'allowed';
+    return `<div class="dec"><div class="top"><div><span class="tag ${ok ? 'ok' : 'bad'}">${ok ? 'ADMITTED' : 'REFUSED'}</span><span class="who">${esc(d.label || short(d.payer) || 'unknown agent')}</span>${ok ? '' : ' — ' + esc(REASONS[d.reason] || d.reason)}</div><time>${new Date(d.at).toLocaleTimeString()} · ${d.ms} ms</time></div>` +
+      `<ul class="checks">${(d.checks || []).map((c) => `<li class="${c.pass ? 'p' : 'f'}">${esc(c.label)} <code>${esc(c.detail)}</code></li>`).join('')}</ul>` +
+      (ok ? `<div class="rcpt">Paid ${ccd(d.receipt.amountMicroCcd)} CCD, fee sponsored by ${short(d.receipt.sponsor)} · <a target="_blank" href="${d.receipt.explorer}">view transaction on CCDExplorer</a></div>` : `<div class="rcpt">Not charged. No transaction was submitted.</div>`) + `</div>`;
+  }).join('') : '<p style="color:var(--mute)">No requests yet. Send an agent from the left.</p>';
+}
+refresh(); setInterval(refresh, 5000);
+</script>
+</body>
+</html>

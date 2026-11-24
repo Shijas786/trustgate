@@ -1,0 +1,42 @@
+{
+  "atlas": {
+    "name": "Atlas Research Agent",
+    "owner": "3nFSvcqKXPQk5KCSCjCeFdTDv8LEXQSJEpLvuNGuFC9hSpWT1z",
+    "agent_uri": "https://raw.githubusercontent.com/Shijas786/trustgate/main/cards/atlas.json",
+    "txs": {
+      "register": "3fc95e18d3b55e8f726086dab0eb7571b6c177f8fdbed86fcb8be36e58920eef",
+      "setAgentURI": "a626875edec028ea7b6d4fff1c3c3912cc14723aa36c24c37014b8810a9c4c58"
+    },
+    "token_id": 1485,
+    "token_address": "JyP9Xko9uWr5vVDr43NgX",
+    "metadata_hash_hex": "b40a4232c96cdd646c4657ef59ff50d636b188836f0f1f0993fcbff224957757",
+    "done": true
+  },
+  "mirage": {
+    "name": "Mirage Agent",
+    "owner": "4jRB6URef2t53YchmjCyBk2PHe3WMc5StNwkXd1RPEeddVbd8L",
+    "agent_uri": "https://raw.githubusercontent.com/Shijas786/trustgate/main/cards/mirage.json",
+    "txs": {
+      "register": "54a7ddbd0c187c91473db7cf3e5cf74d28a501315b08c54ea910079b5ec54ee8",
+      "setAgentURI": "a7f2b0e2f9de9049fd3b8143f0a217732107aae546b125f6f2d454c70f94a9ad"
+    },
+    "token_id": 1486,
+    "token_address": "JyP9XmtdqYM1kcTbYhiwd",
+    "metadata_hash_hex": "116e5f7affe7de064b2c24b376106b439cbc734a8636e2364f3587c878e153c2",
+    "done": true
+  },
+  "ghost": {
+    "name": "Ghost Agent",
+    "owner": "4jRB6URef2t53YchmjCyBk2PHe3WMc5StNwkXd1RPEeddVbd8L",
+    "agent_uri": "https://raw.githubusercontent.com/Shijas786/trustgate/main/cards/ghost.json",
+    "txs": {
+      "register": "88688b0493ef360568a368534c98aad572fb0f65abe821fcea7978e1db6848e4",
+      "setAgentURI": "0f196d6ae4d0e4d8076daafc7cf65f6869a57c6fb81f0a858e0f032fa69d6403",
+      "revoke": "eea6835ad8ae1878152cd74146bbdeb8ec76aa94547bf1d6d5337401f3a57907"
+    },
+    "token_id": 1487,
+    "token_address": "JyP9Xnz7mZqwajhQdfe9k",
+    "metadata_hash_hex": "0300d90d9704e11824fbd15b93a7a2ff38226314a146db8f61bccc7fb4a3ec80",
+    "done": true
+  }
+}
