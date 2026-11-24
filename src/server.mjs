@@ -35,6 +35,16 @@ app.use('/cards', express.static(path.join(root, 'cards')));
 // The paid product: a due-diligence report on any registered agent, built from on-chain data.
 app.get(
   '/api/report/:badge',
+  // Refuse before any payment if the report cannot be produced.
+  async (req, res, next) => {
+    try {
+      const subject = await registry('agent_by_token_address', { token_address: req.params.badge });
+      if (!subject?.owner_account) return res.status(404).json({ error: 'unknown_subject', charged: false });
+      next();
+    } catch {
+      res.status(404).json({ error: 'unknown_subject', charged: false });
+    }
+  },
   trustgate({ payTo: env.OPERATOR_ADDRESS, priceMicroCcd: PRICE, description: 'Know-Your-Agent due-diligence report', policy: { dailyCapMicroCcd: DAILY_CAP }, onDecision }),
   async (req, res) => {
     const subject = req.params.badge;

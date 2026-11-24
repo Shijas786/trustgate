@@ -13,7 +13,7 @@ export function trustgate({ payTo, priceMicroCcd, description, policy = {}, onDe
   return async function trustgateMiddleware(req, res, next) {
     const started = Date.now();
     const badge = req.get('x-agent-badge') || null;
-    const requirements = await buildRequirements({ payTo, amountMicroCcd: priceMicroCcd });
+    const requirements = await (deps.buildRequirements ?? buildRequirements)({ payTo, amountMicroCcd: priceMicroCcd });
     const resource = { url: `${req.protocol}://${req.get('host')}${req.originalUrl}`, description, mimeType: 'application/json' };
     const paymentPayload = decodeHeader(req.get('payment-signature') ?? req.get('x-payment'));
 
@@ -65,7 +65,12 @@ export function trustgate({ payTo, priceMicroCcd, description, policy = {}, onDe
     } finally {
       inFlight.delete(badge);
     }
-    if (!settled.success) return deny(402, 'settlement_failed', { detail: settled.errorReason });
+    if (!settled.success) {
+      // A submitted transfer may still finalize, so never report it as uncharged.
+      const tx = settled.transaction || null;
+      return deny(tx ? 502 : 402, tx ? 'settlement_unconfirmed' : 'settlement_failed',
+        { detail: settled.errorReason, ...(tx ? { charged: 'unconfirmed', transaction: tx, explorer: explorerTx(tx) } : {}) });
+    }
     spend.set(key, BigInt(spend.get(key) ?? 0n) + BigInt(priceMicroCcd));
 
     const receipt = { transaction: settled.transaction, explorer: explorerTx(settled.transaction), network: settled.network, payer: settled.payer, payTo, amountMicroCcd: String(priceMicroCcd), sponsor: requirements.extra?.feePayer };

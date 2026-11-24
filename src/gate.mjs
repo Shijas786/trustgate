@@ -1,14 +1,41 @@
 // TrustGate policy engine: decides whether an agent may buy, from on-chain facts only.
 import { createHash } from 'node:crypto';
+import { lookup } from 'node:dns/promises';
+import { isIP } from 'node:net';
 import { registry as defaultRegistry } from './registry.mjs';
 
 const BADGE_EXT = 'https://docs.concordium.com/a2a-extensions/concordium-badge/v1';
 const sha256 = (buf) => createHash('sha256').update(buf).digest('hex');
 const tail = (caip) => (typeof caip === 'string' ? caip.split(/[:/]/).pop() : caip);
 
+const MAX_CARD_BYTES = 256 * 1024;
+
+// Card URLs are chosen by agent owners, so only public https hosts are fetched and redirects are not followed.
+export async function assertPublicUrl(url, resolve = (h) => lookup(h, { all: true })) {
+  const u = new URL(url);
+  if (u.protocol !== 'https:') throw new Error('card url must be https');
+  const host = u.hostname.replace(/^\[|\]$/g, '');
+  const addrs = isIP(host) ? [{ address: host }] : await resolve(host);
+  if (!addrs.length || addrs.some((a) => isPrivate(a.address))) throw new Error('card url resolves to a non-public address');
+}
+
+function isPrivate(ip) {
+  if (isIP(ip) === 4) {
+    const [a, b] = ip.split('.').map(Number);
+    return a === 0 || a === 10 || a === 127 || a >= 224 || (a === 100 && b >= 64 && b <= 127) || (a === 169 && b === 254) || (a === 172 && b >= 16 && b <= 31) || (a === 192 && b === 168);
+  }
+  const v = ip.toLowerCase();
+  const mapped = v.match(/^::ffff:(\d+\.\d+\.\d+\.\d+)$/);
+  if (mapped) return isPrivate(mapped[1]);
+  return v === '::' || v === '::1' || v.startsWith('::ffff:') || /^f[cd]/.test(v) || /^fe[89ab]/.test(v) || v.startsWith('ff');
+}
+
 async function defaultFetchCard(url) {
-  const res = await fetch(url, { signal: AbortSignal.timeout(8000), redirect: 'follow' });
-  return { status: res.status, body: Buffer.from(await res.arrayBuffer()) };
+  await assertPublicUrl(url);
+  const res = await fetch(url, { signal: AbortSignal.timeout(8000), redirect: 'error' });
+  const body = Buffer.from(await res.arrayBuffer());
+  if (body.length > MAX_CARD_BYTES) throw new Error('card too large');
+  return { status: res.status, body };
 }
 
 /**

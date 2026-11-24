@@ -52,3 +52,38 @@ test('enforces the per-agent daily cap and owner blocklist', async () => {
   assert.equal((await run({ policy: { dailyCapMicroCcd: 500n, spentToday: 300n, priceMicroCcd: 200n } })).allow, true);
   assert.equal((await run({ policy: { blockedOwners: [OWNER] } })).reason, 'owner_allowed');
 });
+
+test('card urls must be public https', async () => {
+  const { assertPublicUrl } = await import('../src/gate.mjs');
+  const to = (address) => async () => [{ address }];
+  await assert.rejects(assertPublicUrl('http://example.com/card.json', to('93.184.216.34')));
+  await assert.rejects(assertPublicUrl('https://127.0.0.1/card.json'));
+  await assert.rejects(assertPublicUrl('https://[::1]/card.json'));
+  await assert.rejects(assertPublicUrl('https://internal.example/card.json', to('10.0.0.5')));
+  await assert.rejects(assertPublicUrl('https://metadata.example/card.json', to('169.254.169.254')));
+  await assert.rejects(assertPublicUrl('https://mapped.example/card.json', to('::ffff:192.168.1.1')));
+  await assertPublicUrl('https://example.com/card.json', to('93.184.216.34'));
+});
+
+test('a submitted but unconfirmed settlement is not reported as uncharged', async () => {
+  const { trustgate } = await import('../src/middleware.mjs');
+  const { encodeHeader } = await import('../src/payments.mjs');
+  const body = Buffer.from(JSON.stringify({ capabilities: { extensions: [{ uri: 'https://docs.concordium.com/a2a-extensions/concordium-badge/v1', params: { tokenAddress: 'B1', owner: { account: 'OWNER' } } }] } }));
+  const mw = trustgate({
+    payTo: '4XC9TBAXSJN174Jj74iBVotS68oqRGPVBM3YzsghzHAD5rasBc', priceMicroCcd: 1n,
+    deps: {
+      buildRequirements: async () => ({ extra: {} }),
+      facilitator: { verify: async () => ({ isValid: true, payer: 'OWNER' }), settle: async () => ({ success: false, errorReason: 'timeout', transaction: 'abc' }) },
+      registry: async () => ({ token_id: 1, owner_account: 'OWNER', agent_wallet: 'OWNER', status: 'Active', agent_uri: 'https://x/card.json', metadata_hash_hex: createHash('sha256').update(body).digest('hex') }),
+      fetchCard: async () => ({ status: 200, body }),
+    },
+  });
+  const headers = { 'x-agent-badge': 'B1', 'payment-signature': encodeHeader({ x402Version: 2, payload: { sender: 'OWNER' } }), host: 'localhost' };
+  const out = {};
+  const res = { set() {}, status(c) { out.status = c; return this; }, json(b) { out.body = b; return this; } };
+  await mw({ get: (h) => headers[h.toLowerCase()], protocol: 'http', originalUrl: '/x' }, res, () => { out.next = true; });
+  assert.equal(out.status, 502);
+  assert.equal(out.body.charged, 'unconfirmed');
+  assert.equal(out.body.transaction, 'abc');
+  assert.equal(out.next, undefined);
+});

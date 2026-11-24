@@ -71,7 +71,7 @@ The paid product is itself a Know-Your-Agent report: a due-diligence summary of 
 
 ```bash
 npm install
-node scripts/id-start.mjs        # creates a testnet wallet and prints an identity-issuance URL to open
+node scripts/id-start.mjs        # creates a testnet wallet; open the printed URL, then save the code_uri from the redirect to .secrets/code_uri.txt
 node scripts/accounts.mjs        # deploys the accounts and requests test CCD
 node scripts/env.mjs             # writes .env
 node scripts/register-agents.mjs # registers the demo agents and writes cards/

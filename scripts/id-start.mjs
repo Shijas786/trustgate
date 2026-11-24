@@ -4,6 +4,7 @@ import { ConcordiumGRPCNodeClient, credentials } from '@concordium/web-sdk/nodej
 import { generateMnemonic } from 'bip39';
 import fs from 'fs';
 const f = '.secrets/wallet.json';
+fs.mkdirSync('.secrets', { recursive: true });
 const st = fs.existsSync(f) ? JSON.parse(fs.readFileSync(f)) : { seedPhrase: generateMnemonic(256), ip: 0, identityIndex: 0 };
 fs.writeFileSync(f, JSON.stringify(st, null, 2));
 const client = new ConcordiumGRPCNodeClient('grpc.testnet.concordium.com', 20000, credentials.createSsl());
@@ -20,4 +21,6 @@ const p = new URLSearchParams({ scope: 'identity', response_type: 'code', redire
 const url = `${idp.metadata.issuanceStart}?${p}`;
 fs.writeFileSync('.secrets/id-url.txt', url);
 const r = await fetch(url, { redirect: 'manual' });
-console.log(r.status, r.headers.get('location'));
+console.log('Open this URL and complete the test identity verification:\n' + r.headers.get('location'));
+console.log('\nThe browser is then redirected to http://localhost:4173/confirm-identity#code_uri=<URL> (the page itself does not load).');
+console.log('Save that <URL> to .secrets/code_uri.txt, then run scripts/accounts.mjs.');
