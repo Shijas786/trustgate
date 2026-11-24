@@ -1,5 +1,16 @@
 # TrustGate: submission write-up
 
+**Pitch:** KYC for AI agents, at the paywall.
+
+| Encode field | Value |
+|---|---|
+| Project name | TrustGate |
+| Public repo | https://github.com/Shijas786/trustgate |
+| Live demo | (Render URL, once deployed) |
+| Demo video | 60 s screen recording: free badge check, trusted purchase, four refusals |
+| CCDExplorer | Agent registration and gated purchase links below |
+| Description | The sections below, from "What we built" to "Path to production" |
+
 **One line:** Know-Your-Agent for paid APIs. TrustGate checks an AI agent's Concordium Badge in the on-chain Agent Registry before its x402 payment is settled, so sellers only serve accountable agents and refused agents are never charged.
 
 ## What we built
@@ -26,6 +37,7 @@ Agent Registry (CIS-8004) on testnet `<12802,0>`, Verified by Concordium badge, 
 - Revocation: https://ccdexplorer.io/testnet/transaction/eea6835ad8ae1878152cd74146bbdeb8ec76aa94547bf1d6d5337401f3a57907
 - Sponsored x402 payment: https://ccdexplorer.io/testnet/transaction/3e8f89876503d0b2f34f9a256f3baaf06b54928950a88cb1382dd3fd1762c80b
 - Gated purchase through TrustGate: https://ccdexplorer.io/testnet/transaction/86a20dd8a7a8c22f3d3304abc804f27881d43b2a470ac305844bb18b521a2b0a
+- Free badge check and gated purchase from the demo film: https://ccdexplorer.io/testnet/transaction/5b90370fe639516a07609a0f572894f6c2cb0f16bab0e47648cb32421ff26ccc
 - Operator account: https://ccdexplorer.io/testnet/account/4XC9TBAXSJN174Jj74iBVotS68oqRGPVBM3YzsghzHAD5rasBc
 
 ## Path to production
