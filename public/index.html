@@ -36,11 +36,29 @@ code{font:12px ui-monospace,Menlo,monospace;color:#b8c7d9;word-break:break-all}
 .kv{font-size:13px;margin:0 0 6px}.kv span{color:var(--mute)}
 #status{height:44px;overflow:hidden;color:var(--mute);font-size:13px;margin:4px 0 10px}
 .flow{color:var(--mute);font-size:13px;margin:0;padding-left:18px}
+header{position:relative}
+#mute{position:absolute;top:28px;right:32px;background:#0e141c;color:var(--mute);border:1px solid var(--line);border-radius:99px;padding:6px 12px;font:inherit;font-size:13px;cursor:pointer}
+.gate{position:relative;height:96px;border:1px solid var(--line);border-radius:12px;background:#0a0f15;overflow:hidden;margin-bottom:16px;display:flex;align-items:center;justify-content:center}
+.gate .door{position:absolute;top:0;bottom:0;width:50%;background:repeating-linear-gradient(90deg,#16202c 0 10px,#121a24 10px 20px);transition:transform .7s cubic-bezier(.7,0,.2,1)}
+.gate .l{left:0;border-right:2px solid var(--line)}.gate .r{right:0;border-left:2px solid var(--line)}
+.gate.open .l{transform:translateX(-100%)}.gate.open .r{transform:translateX(100%)}
+.gate .msg{position:relative;font-weight:800;letter-spacing:2px;font-size:20px;color:var(--mute);z-index:0}
+.gate.open{box-shadow:inset 0 0 40px rgba(53,208,138,.35);border-color:var(--ok)}.gate.open .msg{color:var(--ok)}
+.gate.shut{animation:shake .45s;border-color:var(--bad);box-shadow:inset 0 0 40px rgba(255,107,107,.3)}.gate.shut .door{background:repeating-linear-gradient(90deg,#2a1519 0 10px,#22121a 10px 20px)}
+.gate.scan::after{content:"";position:absolute;left:0;right:0;height:2px;background:var(--acc);box-shadow:0 0 12px var(--acc);animation:scan 1s linear infinite;z-index:2}
+.gate .msg{z-index:3}
+@keyframes scan{from{top:0}to{top:100%}}
+@keyframes shake{20%,60%{transform:translateX(-6px)}40%,80%{transform:translateX(6px)}}
+.dec.fresh{animation:pop .5s ease-out}.dec.fresh .checks li{opacity:0;animation:rev .3s forwards}
+@keyframes pop{from{transform:translateY(-8px);opacity:0}to{transform:none;opacity:1}}
+@keyframes rev{from{opacity:0;transform:translateX(-6px)}to{opacity:1;transform:none}}
+@media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}.dec.fresh .checks li{opacity:1}}
 </style>
 </head>
 <body>
 <header>
   <h1>Trust<span>Gate</span></h1>
+  <button id="mute" aria-pressed="false">Sound on</button>
   <p class="pitch">KYC for AI agents, at the paywall.</p>
   <p class="sub">Know-Your-Agent for paid APIs. Before an AI agent's x402 payment is settled, TrustGate checks its Concordium Badge in the on-chain Agent Registry. Trusted agents pay with a sponsored transaction and get the data. Everyone else is turned away, and never charged.</p>
 </header>
@@ -73,6 +91,7 @@ code{font:12px ui-monospace,Menlo,monospace;color:#b8c7d9;word-break:break-all}
   </section>
   <section class="panel pFeed">
     <h2>Live decisions</h2>
+    <div class="gate" id="gate"><div class="door l"></div><div class="door r"></div><span class="msg" id="gateMsg">GATE CLOSED</span></div>
     <div class="stats">
       <div class="stat"><b id="sAllowed">0</b><small>requests admitted</small></div>
       <div class="stat"><b id="sDenied">0</b><small>requests refused</small></div>
@@ -91,6 +110,37 @@ const SC = [
 ];
 const REASONS = { badge_presented: 'No badge', registered: 'Not in the registry', active: 'Badge revoked', card_integrity: 'Agent Card does not match chain', badge_in_card: 'Card does not carry this badge', payer_is_agent_wallet: 'Payer is not the agent wallet', within_daily_cap: 'Daily cap reached', invalid_payment: 'Invalid payment', settlement_failed: 'Settlement failed', settlement_in_progress: 'Busy' };
 const $ = (id) => document.getElementById(id);
+let ac = null, muted = localStorage.tgMute === '1';
+const syncMute = () => { $('mute').textContent = muted ? 'Sound off' : 'Sound on'; $('mute').setAttribute('aria-pressed', String(muted)); };
+$('mute').onclick = () => { muted = !muted; localStorage.tgMute = muted ? '1' : '0'; syncMute(); };
+syncMute();
+function tone(freq, at, dur, type = 'sine', vol = 0.12, glideTo) {
+  if (muted) return;
+  ac ||= new AudioContext();
+  const t = ac.currentTime + at, o = ac.createOscillator(), g = ac.createGain();
+  o.type = type; o.frequency.setValueAtTime(freq, t);
+  if (glideTo) o.frequency.exponentialRampToValueAtTime(glideTo, t + dur);
+  g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(vol, t + 0.015); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+  o.connect(g).connect(ac.destination); o.start(t); o.stop(t + dur + 0.05);
+}
+const STEP = 0.12;
+const sfx = {
+  tick: (i) => tone(880 + i * 60, i * STEP, 0.06, 'triangle', 0.05),
+  admit: (n) => { [523, 659, 784, 1047].forEach((f, i) => tone(f, n * STEP + i * 0.09, 0.35, 'triangle', 0.12)); tone(1568, n * STEP + 0.42, 0.6, 'sine', 0.08); tone(2093, n * STEP + 0.5, 0.5, 'sine', 0.06); },
+  refuse: (n) => { tone(196, n * STEP, 0.22, 'square', 0.07); tone(147, n * STEP + 0.22, 0.4, 'square', 0.07, 110); },
+};
+function gate(state, text) {
+  const g = $('gate'); g.className = 'gate' + (state ? ' ' + state : ''); $('gateMsg').textContent = text;
+  if (state === 'shut') { void g.offsetWidth; }
+}
+function countTo(el, value, fmt = (v) => v) {
+  const from = Number(el.dataset.v ?? value), to = Number(value), t0 = performance.now();
+  el.dataset.v = to;
+  if (from === to) { el.textContent = fmt(to); return; }
+  const step = (t) => { const k = Math.min(1, (t - t0) / 600), e = 1 - (1 - k) ** 3; el.textContent = fmt(from + (to - from) * e); if (k < 1) requestAnimationFrame(step); };
+  requestAnimationFrame(step);
+}
+let lastTop = null, pending = false;
 const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const short = (s) => (s && s.length > 20 ? s.slice(0, 8) + '…' + s.slice(-6) : s);
 const ccd = (micro) => (Number(micro) / 1e6).toLocaleString(undefined, { maximumFractionDigits: 2 });
@@ -99,6 +149,8 @@ $('scenarios').innerHTML = SC.map(([id, t, d]) => `<button class="sc" data-id="$
 document.querySelectorAll('button.sc').forEach((b) => b.onclick = async () => {
   document.querySelectorAll('button.sc').forEach((x) => (x.disabled = true));
   const t0 = Date.now();
+  pending = true; gate('scan', 'CHECKING BADGE');
+  if (!muted) { ac ||= new AudioContext(); ac.resume(); }
   const tick = setInterval(() => { $('status').textContent = `Agent is calling the API… ${((Date.now() - t0) / 1000).toFixed(1)} s`; }, 100);
   try {
     const r = await fetch('api/demo/' + b.dataset.id, { method: 'POST', headers: { 'content-type': 'application/json' }, body: '{}' });
@@ -107,22 +159,33 @@ document.querySelectorAll('button.sc').forEach((b) => b.onclick = async () => {
     $('status').textContent = j.error ? j.error : j.status === 200 ? `Admitted, paid and finalized on Concordium in ${((Date.now() - t0) / 1000).toFixed(1)} s. Report delivered.` : j.body?.charged === 'unconfirmed' ? 'Payment was submitted but not confirmed in time. Check the transaction link in the feed.' : 'Refused: ' + (REASONS[j.body?.reason] || j.body?.reason) + '. Nothing was charged.';
   } catch (e) { clearInterval(tick); $('status').textContent = 'Request failed: ' + e.message; }
   document.querySelectorAll('button.sc').forEach((x) => (x.disabled = false));
-  refresh();
+  await refresh(true);
+  pending = false;
 });
 
-async function refresh() {
+async function refresh(fromClick = false) {
+  if (pending && !fromClick) return;
   const s = await (await fetch('api/state')).json();
-  $('sAllowed').textContent = s.stats.allowed; $('sDenied').textContent = s.stats.denied; $('sEarned').textContent = ccd(s.stats.earnedMicroCcd);
+  countTo($('sAllowed'), s.stats.allowed, Math.round); countTo($('sDenied'), s.stats.denied, Math.round); countTo($('sEarned'), s.stats.earnedMicroCcd, ccd);
+  const top = s.decisions[0], topKey = top ? top.at + '|' + top.label : null, isNew = lastTop !== null && topKey !== lastTop;
   $('chain').innerHTML =
     `<p class="kv"><span>Network</span> ${esc(s.network)} · <span>price</span> ${ccd(s.priceMicroCcd)} CCD · <span>cap</span> ${ccd(s.dailyCapMicroCcd)} CCD/agent/day</p>` +
     Object.entries(s.accounts).map(([n, a]) => `<p class="kv"><span>${n}</span> <a target="_blank" href="${a.explorer}">${short(a.address)}</a></p>`).join('') +
     Object.values(s.agents).map((a) => `<p class="kv"><span>${esc(a.name)}</span> badge <code>${a.badge}</code> · ` + Object.entries(a.txs).map(([k, u]) => `<a target="_blank" href="${u}">${k}</a>`).join(' · ') + `</p>`).join('');
-  $('decisions').innerHTML = s.decisions.length ? s.decisions.map((d) => {
+  $('decisions').innerHTML = s.decisions.length ? s.decisions.map((d, idx) => {
     const ok = d.outcome === 'allowed';
-    return `<div class="dec"><div class="top"><div><span class="tag ${ok ? 'ok' : 'bad'}">${ok ? 'ADMITTED' : 'REFUSED'}</span><span class="who">${esc(d.label || short(d.payer) || 'unknown agent')}</span>${ok ? '' : ' — ' + esc(REASONS[d.reason] || d.reason)}</div><time>${new Date(d.at).toLocaleTimeString()} · ${(d.ms / 1000).toFixed(1)} s</time></div>` +
+    return `<div class="dec${idx === 0 && isNew ? ' fresh' : ''}"><div class="top"><div><span class="tag ${ok ? 'ok' : 'bad'}">${ok ? 'ADMITTED' : 'REFUSED'}</span><span class="who">${esc(d.label || short(d.payer) || 'unknown agent')}</span>${ok ? '' : ' — ' + esc(REASONS[d.reason] || d.reason)}</div><time>${new Date(d.at).toLocaleTimeString()} · ${(d.ms / 1000).toFixed(1)} s</time></div>` +
       `<ul class="checks">${(d.checks || []).map((c) => `<li class="${c.pass ? 'p' : 'f'}">${esc(c.label)} <code>${esc(c.detail)}</code></li>`).join('')}</ul>` +
       (ok ? `<div class="rcpt">Paid ${ccd(d.receipt.amountMicroCcd)} CCD, fee sponsored by ${short(d.receipt.sponsor)} · <a target="_blank" href="${d.receipt.explorer}">view transaction on CCDExplorer</a></div>` : d.charged === 'unconfirmed' ? `<div class="rcpt">Payment submitted but not confirmed · <a target="_blank" href="${d.explorer}">view transaction on CCDExplorer</a></div>` : `<div class="rcpt">Not charged.${d.explorer ? ` <a target="_blank" href="${d.explorer}">Rejected transaction</a>` : ' No transaction was submitted.'}</div>`) + `</div>`;
   }).join('') : '<p style="color:var(--mute)">No requests yet. Send an agent from the left.</p>';
+  if (isNew) {
+    const items = [...document.querySelectorAll('.dec.fresh .checks li')];
+    items.forEach((li, i) => { li.style.animationDelay = i * STEP + 's'; sfx.tick(i); });
+    const ok = top.outcome === 'allowed', n = items.length;
+    setTimeout(() => gate(ok ? 'open' : 'shut', ok ? 'ADMITTED · PAID ' + ccd(top.receipt?.amountMicroCcd ?? 0) + ' CCD' : 'REFUSED · NOT CHARGED'), n * STEP * 1000);
+    ok ? sfx.admit(n) : sfx.refuse(n);
+  } else if (!top) gate('', 'GATE CLOSED');
+  lastTop = topKey;
 }
 const checkList = (checks) => `<ul class="checks">${(checks || []).map((c) => `<li class="${c.pass ? 'p' : 'f'}">${esc(c.label)} <code>${esc(c.detail)}</code></li>`).join('')}</ul>`;
 $('try').onsubmit = async (e) => {
