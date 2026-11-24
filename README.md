@@ -1,8 +1,21 @@
 # TrustGate
 
+**KYC for AI agents, at the paywall.**
+
 **Know-Your-Agent for paid APIs on Concordium.** One Express middleware that checks an AI agent's on-chain identity before its x402 payment is settled. Trusted agents pay with a sponsored transaction and get the data. Everyone else is refused and never charged.
 
 Built for the Concordium Trusted Agents Hackathon. Runs on Concordium testnet.
+
+## Verify it in two minutes
+
+| Claim | How to check |
+|---|---|
+| A trusted agent pays through the gate, fee sponsored | [Transaction on CCDExplorer](https://ccdexplorer.io/testnet/transaction/86a20dd8a7a8c22f3d3304abc804f27881d43b2a470ac305844bb18b521a2b0a): 0.25 CCD from the agent wallet to the operator |
+| The agent is in Concordium's Agent Registry | [Registration transaction](https://ccdexplorer.io/testnet/transaction/3fc95e18d3b55e8f726086dab0eb7571b6c177f8fdbed86fcb8be36e58920eef) (CIS-8004 `<12802,0>`, token 1485) |
+| Revocation is real and on-chain | [Revoke transaction](https://ccdexplorer.io/testnet/transaction/eea6835ad8ae1878152cd74146bbdeb8ec76aa94547bf1d6d5337401f3a57907) for token 1487 |
+| The Agent Card is hash-anchored | `curl -s https://raw.githubusercontent.com/Shijas786/trustgate/main/cards/atlas.json \| sha256sum` gives `b40a4232…7757`, the hash stored on-chain |
+| Untrusted agents are refused and not charged | `npm start`, open the dashboard, send the four untrusted agents: each is refused on a different check and the earned counter does not move |
+| The policy engine does what it says | `npm test` (11 tests) |
 
 ## The problem
 
