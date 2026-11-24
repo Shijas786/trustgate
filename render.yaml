@@ -1,0 +1,23 @@
+services:
+  - type: web
+    name: trustgate
+    runtime: docker
+    plan: free
+    healthCheckPath: /api/state
+    envVars:
+      - key: OPERATOR_ADDRESS
+        sync: false
+      - key: OPERATOR_KEY
+        sync: false
+      - key: SPONSOR_ADDRESS
+        sync: false
+      - key: SPONSOR_KEY
+        sync: false
+      - key: AGENT_ADDRESS
+        sync: false
+      - key: AGENT_KEY
+        sync: false
+      - key: ROGUE_ADDRESS
+        sync: false
+      - key: ROGUE_KEY
+        sync: false

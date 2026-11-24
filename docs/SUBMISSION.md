@@ -25,6 +25,7 @@ Agent Registry (CIS-8004) on testnet `<12802,0>`, Verified by Concordium badge, 
 - Agent registration: https://ccdexplorer.io/testnet/transaction/3fc95e18d3b55e8f726086dab0eb7571b6c177f8fdbed86fcb8be36e58920eef
 - Revocation: https://ccdexplorer.io/testnet/transaction/eea6835ad8ae1878152cd74146bbdeb8ec76aa94547bf1d6d5337401f3a57907
 - Sponsored x402 payment: https://ccdexplorer.io/testnet/transaction/3e8f89876503d0b2f34f9a256f3baaf06b54928950a88cb1382dd3fd1762c80b
+- Gated purchase through TrustGate: https://ccdexplorer.io/testnet/transaction/86a20dd8a7a8c22f3d3304abc804f27881d43b2a470ac305844bb18b521a2b0a
 - Operator account: https://ccdexplorer.io/testnet/account/4XC9TBAXSJN174Jj74iBVotS68oqRGPVBM3YzsghzHAD5rasBc
 
 ## Path to production

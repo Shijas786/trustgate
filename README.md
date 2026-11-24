@@ -64,6 +64,7 @@ A refused agent's transaction is never submitted, so it is never charged.
 | Atlas card anchored | https://ccdexplorer.io/testnet/transaction/a626875edec028ea7b6d4fff1c3c3912cc14723aa36c24c37014b8810a9c4c58 |
 | Ghost agent revoked (token 1487) | https://ccdexplorer.io/testnet/transaction/eea6835ad8ae1878152cd74146bbdeb8ec76aa94547bf1d6d5337401f3a57907 |
 | Sponsored x402 payment | https://ccdexplorer.io/testnet/transaction/3e8f89876503d0b2f34f9a256f3baaf06b54928950a88cb1382dd3fd1762c80b |
+| Gated purchase by Atlas through TrustGate (0.25 CCD, fee sponsored) | https://ccdexplorer.io/testnet/transaction/86a20dd8a7a8c22f3d3304abc804f27881d43b2a470ac305844bb18b521a2b0a |
 | Operator account (receives payments) | https://ccdexplorer.io/testnet/account/4XC9TBAXSJN174Jj74iBVotS68oqRGPVBM3YzsghzHAD5rasBc |
 
 ## Demo scenarios
@@ -91,6 +92,8 @@ CARD_BASE_URL=https://<your-host>/cards node scripts/register-agents.mjs # regis
 npm start                        # http://localhost:8787
 npm test
 ```
+
+To host it, deploy the included `Dockerfile` (a `render.yaml` blueprint is provided) and set the variables from `.env`.
 
 `GET /api/check/:badge` is a free pre-flight that returns the same verdict the gate would reach.
 
